@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: sqli-web
+    ports:
+      - "1337:80"
+    volumes:
+      - ./uploads:/var/www/uploads
+      - ./seeds:/var/www/seeds
+      - ./custom.ini:/usr/local/etc/php/conf.d/custom.ini
+    depends_on:
+      - mysql
+      - postgres
+      - mssql
+    environment:
+      - MYSQL_HOST=mysql
+      - MYSQL_USER=sqli_user
+      - MYSQL_PASSWORD=sqli_pass
+      - MYSQL_DB=sqli_db
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USER=sqli_user
+      - POSTGRES_PASSWORD=sqli_pass
+      - POSTGRES_DB=sqli_db
+      - MSSQL_HOST=mssql
+      - MSSQL_USER=sa
+      - MSSQL_PASSWORD=SqliPass123!
+      - MSSQL_DB=sqli_db
+
+  mysql:
+    image: mysql:8.0
+    container_name: sqli-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: sqli_db
+      MYSQL_USER: sqli_user
+      MYSQL_PASSWORD: sqli_pass
+    volumes:
+      - ./seeds/mysql.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./uploads:/var/www/uploads
+      - mysql-data:/var/lib/mysql
+    command: --secure-file-priv="" --local-infile=1
+
+  postgres:
+    image: postgres:15
+    container_name: sqli-postgres
+    environment:
+      POSTGRES_DB: sqli_db
+      POSTGRES_USER: sqli_user
+      POSTGRES_PASSWORD: sqli_pass
+    volumes:
+      - ./seeds/pg.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./uploads:/var/www/uploads
+      - postgres-data:/var/lib/postgresql/data
+
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2017-latest
+    container_name: sqli-mssql
+    environment:
+      ACCEPT_EULA: Y
+      SA_PASSWORD: SqliPass123!
+      MSSQL_PID: Developer
+    volumes:
+      - ./seeds/mssql.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./seeds/mssql-init.sh:/docker-entrypoint-initdb.d/init.sh
+      - mssql-data:/var/opt/mssql
+    ports:
+      - "1433:1433"
+    command: /bin/bash -c "(/opt/mssql/bin/sqlservr &) && sleep 30 && /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P SqliPass123! -d master -i /docker-entrypoint-initdb.d/init.sql && tail -f /dev/null"
+
+volumes:
+  mysql-data:
+  postgres-data:
+  mssql-data:
